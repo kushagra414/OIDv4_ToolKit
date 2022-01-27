@@ -5,7 +5,7 @@ from modules.utils import images_options
 from modules.utils import bcolors as bc
 from multiprocessing.dummy import Pool as ThreadPool
 
-def download(args, df_val, folder, dataset_dir, class_name, class_code, class_list=None, threads = 20):
+def download(args, df_val, folder, dataset_dir, class_name, class_code, class_list=None, class_codes = [], image_data = set(), threads = 20):
     '''
     Manage the download of the images and the label maker.
     :param args: argument parser.
@@ -31,10 +31,16 @@ def download(args, df_val, folder, dataset_dir, class_name, class_code, class_li
 
     print ('\n' + bc.HEADER + '-'*l + class_name + '-'*l + bc.ENDC)
     print(bc.INFO + 'Downloading {} images.'.format(args.type_csv) + bc.ENDC)
-    df_val_images = images_options(df_val, args)
+    images_list = set()
+    if(len(image_data) > 0):
+        for imageId, labels in image_data.items():
+            if (is_class_present(labels, class_codes)):
+                images_list.add(imageId)
+    else:
+        df_val_images = images_options(df_val, args)
+        images_list = df_val_images['ImageID'][df_val_images.LabelName == class_code].values
+        images_list = set(images_list)
 
-    images_list = df_val_images['ImageID'][df_val_images.LabelName == class_code].values
-    images_list = set(images_list)
     print(bc.INFO + '[INFO] Found {} online images for {}.'.format(len(images_list), folder) + bc.ENDC)
 
     if args.limit is not None:
@@ -137,3 +143,9 @@ def get_label(folder, dataset_dir, class_name, class_code, df_val, class_list, a
                 pass
 
         print(bc.INFO + 'Labels creation completed.' + bc.ENDC)
+
+def is_class_present(labels, class_codes):
+    for class_code in class_codes:
+        if class_code not in labels:
+            return False
+    return True

@@ -102,8 +102,35 @@ def bounding_boxes_images(args, DEFAULT_OID_DIR):
 			df_classes = pd.read_csv(CLASSES_CSV, header=None)
 
 			class_dict = {}
+			class_codes = []
 			for class_name in class_list:
 				class_dict[class_name] = df_classes.loc[df_classes[1] == class_name].values[0][0]
+				class_codes.append(df_classes.loc[df_classes[1] == class_name].values[0][0])
+
+
+			image_data = {'train': {}, 'test': {}, 'validation': {}}
+			if args.type_csv == 'train':
+					name_file = file_list[0]
+					df_val = TTV(csv_dir, name_file, args.yes)
+					df_val_images = images_options(df_val, args)
+					image_data['train'] = map_of_labels(df_val_images, args)
+			elif args.type_csv == 'validation':
+					name_file = file_list[1]
+					df_val = TTV(csv_dir, name_file, args.yes)
+					df_val_images = images_options(df_val, args)
+					image_data['validation'] = map_of_labels(df_val_images, args)
+			elif args.type_csv == 'test':
+					name_file = file_list[2]
+					df_val = TTV(csv_dir, name_file, args.yes)
+					df_val_images = images_options(df_val, args)
+					image_data['test'] = map_of_labels(df_val_images, args)
+			elif args.type_csv == 'all':
+					for i in range(3):
+						name_file = file_list[i]
+						df_val = TTV(csv_dir, name_file, args.yes)
+						df_val_images = images_options(df_val, args)
+						image_data[folder[i]] = map_of_labels(df_val_images, args)
+
 
 			for class_name in class_list:
 
@@ -111,34 +138,34 @@ def bounding_boxes_images(args, DEFAULT_OID_DIR):
 					name_file = file_list[0]
 					df_val = TTV(csv_dir, name_file, args.yes)
 					if not args.n_threads:
-						download(args, df_val, folder[0], dataset_dir, class_name, class_dict[class_name], class_list)
+						download(args, df_val, folder[0], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data['train'])
 					else:
-						download(args, df_val, folder[0], dataset_dir, class_name, class_dict[class_name], class_list, int(args.n_threads))
+						download(args, df_val, folder[0], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data['train'], int(args.n_threads))
 
 				elif args.type_csv == 'validation':
 					name_file = file_list[1]
 					df_val = TTV(csv_dir, name_file, args.yes)
 					if not args.n_threads:
-						download(args, df_val, folder[1], dataset_dir, class_name, class_dict[class_name], class_list)
+						download(args, df_val, folder[1], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data['validation'])
 					else:
-						download(args, df_val, folder[1], dataset_dir, class_name, class_dict[class_name], class_list, int(args.n_threads))
+						download(args, df_val, folder[1], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data['validation'], int(args.n_threads))
 
 				elif args.type_csv == 'test':
 					name_file = file_list[2]
 					df_val = TTV(csv_dir, name_file, args.yes)
 					if not args.n_threads:
-						download(args, df_val, folder[2], dataset_dir, class_name, class_dict[class_name], class_list)
+						download(args, df_val, folder[2], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data['test'])
 					else:
-						download(args, df_val, folder[2], dataset_dir, class_name, class_dict[class_name], class_list, int(args.n_threads))
+						download(args, df_val, folder[2], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data['test'], int(args.n_threads))
 
 				elif args.type_csv == 'all':
 					for i in range(3):
 						name_file = file_list[i]
 						df_val = TTV(csv_dir, name_file, args.yes)
 						if not args.n_threads:
-							download(args, df_val, folder[i], dataset_dir, class_name, class_dict[class_name], class_list)
+							download(args, df_val, folder[i], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data[folder[i]])
 						else:
-							download(args, df_val, folder[i], dataset_dir, class_name, class_dict[class_name], class_list, int(args.n_threads))
+							download(args, df_val, folder[i], dataset_dir, class_name, class_dict[class_name], class_list, class_codes, image_data[folder[i]], int(args.n_threads))
 
 
 	elif args.command == 'visualizer':
@@ -218,3 +245,17 @@ def bounding_boxes_images(args, DEFAULT_OID_DIR):
 					cv2.destroyAllWindows()
 					exit(1)
 					break
+
+
+def map_of_labels(df_val_images, args):
+	print(bc.INFO + 'Please wait while I create a Map of Images for {}, this may take a while...'.format(args.type_csv) + bc.ENDC)
+	image_data = {}
+	for ind in df_val_images.index:
+		if str(df_val_images['ImageID'][ind]) in image_data:
+			image_data[str(df_val_images['ImageID'][ind])].add(str(df_val_images['LabelName'][ind]))
+		else:
+			image_data[str(df_val_images['ImageID'][ind])] = set(str(df_val_images['LabelName'][ind]))
+
+	print(bc.INFO + 'Indexing completed.' + bc.ENDC)
+
+	return image_data
